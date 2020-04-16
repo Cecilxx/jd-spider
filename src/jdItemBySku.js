@@ -1,15 +1,16 @@
 const _ = require('lodash');
 const superagent = require('superagent');
 const cheerio = require('cheerio');
-const getJdSku = require('./getJdSku');
-const queue = require('./queue');
+const parseExcel = require('./parseExcel');
+const exportExcel = require('./exportExcel');
+const queue = require('../utils/queue');
 
 console.log('😊 [程序启动]');
 console.log('🚗 [运行中]');
 
-const allSkus = getJdSku();
-const singleNums = 30;
-const groupNums = Math.ceil(allSkus.length / singleNums);
+const { wyxSkus, wyxSheetData } = parseExcel();
+const singleNums = 100;
+const groupNums = Math.ceil(wyxSkus.length / singleNums);
 let time = 1;
 let timer = null;
 
@@ -26,8 +27,9 @@ const clearTimer = () => {
 
 setTimer();
 
+// 爬虫主体
 const start = (index, next) => {
-  const jdSkus = allSkus.slice(index * singleNums, (index + 1) * singleNums);
+  const jdSkus = wyxSkus.slice(index * singleNums, (index + 1) * singleNums);
   console.log(`😊 [第${index + 1}批次处理条数: ${jdSkus.length}]`);
   const spiderJDh5Item = (sku, resolve, reject) => {
     const url = `https://item.m.jd.com/product/${sku}.html`;
@@ -104,6 +106,36 @@ const start = (index, next) => {
     });
 };
 
+const reduceTwoDimension = (arr) => {
+  return Array.prototype.concat.apply([], arr);
+};
+
+// 组装爬虫信息
+const wyxSheetDataWithPrice = (values) => {
+  const result = [];
+  const spiderResults = reduceTwoDimension(values);
+  wyxSheetData.forEach((sheetItem, index) => {
+    if (index > 0) {
+      const url = sheetItem[6];
+      let sheetSku = '';
+      if (url) {
+        const reg = /\d+/;
+        sheetSku = url.match(reg) ? url.match(reg)[0] : '';
+      }
+      const target = spiderResults.find((item) => item.sku === sheetSku) || {};
+      if (target.sku) {
+        sheetItem[8] = target.price;
+        // sheetItem[10] = target.isSelf ? '京东自营' : '';
+        // sheetItem[11] = target.vender;
+      }
+    }
+    result.push(sheetItem);
+  });
+
+  return result;
+};
+
+// 添加队列操作
 const asyncQueue = new queue();
 const asyncFn = (i) => {
   return (next) => {
@@ -115,10 +147,10 @@ asyncQueue
   .add(...fns)
   .run()
   .then((values) => {
-    console.log('values.length', values.length);
     clearTimer();
+    const result = wyxSheetDataWithPrice(values);
+    exportExcel(result);
   })
   .catch((e) => {
-    console.error(e);
     clearTimer();
   });
