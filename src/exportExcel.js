@@ -37,6 +37,12 @@ class ExportExcel {
       console.log(`🌹 大功告成`);
     });
   }
+
+  static writeFile(data) {
+    fs.writeFile(`./export/${+new Date()}`, data, () => {
+      console.log(`🌹 写入告成`);
+    });
+  }
 }
 
 module.exports = ExportExcel
