@@ -1,37 +1,110 @@
 const _ = require('lodash');
 const superagent = require('superagent');
 const cheerio = require('cheerio');
-const parseExcel = require('./parseExcel');
-const exportExcel = require('./exportExcel');
-const queue = require('../utils/queue');
+const ParseExcel = require('./parseExcel');
+const Download = require('./download');
+const Queue = require('../utils/queue');
+const argv = process.argv;
 
 console.log('😊 [程序启动]');
 console.log('🚗 [运行中]');
 
-const { wyxSkus, wyxSheetData } = parseExcel();
-const singleNums = 100;
+const { skus: allSkus } = ParseExcel.parseExcel('../resource/wyx.xlsx');
+const wyxSkus = allSkus.slice(0, 1)
+const singleNums = 50;
 const groupNums = Math.ceil(wyxSkus.length / singleNums);
-let time = 1;
-let timer = null;
 
-const setTimer = () => {
-  timer = setInterval(() => {
-    console.log(`🚗 [运行时间:${time++}秒]`);
-  }, 1000);
-};
+class JDSpider {
+  constructor() {
+    this.time = 1;
+    this.timer = null;
+  }
 
-const clearTimer = () => {
-  clearInterval(timer);
-  timer = null;
-};
+  setTimer = () => {
+    this.timer = setInterval(() => {
+      console.log(`🚗 [运行时间:${time++}秒]`);
+    }, 1000);
+  };
 
-setTimer();
+  clearTimer() {
+    clearInterval(this.timer);
+    this.timer = null;
+  }
 
-// 爬虫主体
-const start = (index, next) => {
-  const jdSkus = wyxSkus.slice(index * singleNums, (index + 1) * singleNums);
-  console.log(`😊 [第${index + 1}批次处理条数: ${jdSkus.length}]`);
-  const spiderJDh5Item = (sku, resolve, reject) => {
+  getTypeByArgv(type) {
+    return argv.includes(type)
+  }
+
+  dowloadImage (images, sku) {
+    Download.dowloadImg(images, sku).then(() => {
+      console.log('sku: %s 图片全部下载完毕', sku);
+    })
+  }
+
+  getImageUrls(res, sku, resolve) {
+    const reg2 = /<script>window\._itemOnly=\((\S*)\);window\._isLogin=/;
+    const r1 = _.trim(res.text.replace(/\n/g, '').replace(/\s/g, ''));
+    const r2 = r1.match(reg2);
+    const r3 = r2 && r2[1];
+    const imgaeDomain = 'https://m.360buyimg.com/mobilecms/s1125x1125_jfs'
+    const images = [];
+    if (r3) {
+      const itemOnly = JSON.parse(r3)
+      const  { item } = itemOnly
+      if (item.image && item.image.length) {
+        item.image.forEach(img => {
+          const imgArr = img.split('/');
+          imgArr.shift();
+          images.push(`${imgaeDomain}/${imgArr.join('/')}`)
+        })
+      }
+    }
+
+    return images
+  }
+
+  getVender(res) {
+    const reg2 = /<script>window\._itemInfo=\((\S*)\);<\/script><script>window\._itemSpecSkus=/;
+    const reg3 = /"vender":"(\S*)","linkphone"/;
+    const r1 = _.trim(res.text.replace(/\n/g, '').replace(/\s/g, ''));
+    const r2 = r1.match(reg2);
+    const r3 = r2 && r2[1];
+    let isSelf = false;
+    let vender = '';
+    if (r3) {
+      vender = r3.match(reg3) && r3.match(reg3)[1];
+      isSelf = r3.indexOf('self_D') > -1;
+    }
+
+    return {
+      vender,
+      isSelf,
+    };
+  }
+
+  getProduct(res) {
+    const $ = cheerio.load(res.text);
+    // 获取价格，商品名
+    const buyArea = $('#buyArea');
+    const $buyArea = $(buyArea);
+    const priceWrap = $buyArea.children('#priceWrap');
+    const fnWrap = $buyArea.children('.fn_wrap');
+    const price = priceWrap
+      .children('#priceBlock')
+      .children('#priceSale')
+      .text()
+      .trim();
+    const favWrap = fnWrap.children('#favWrap');
+    const itemName = favWrap.children('#itemName');
+    const product = itemName.text().trim();
+
+    return {
+      product,
+      price,
+    };
+  }
+
+  spiderItem(sku, resolve, reject) {
     const url = `https://item.m.jd.com/product/${sku}.html`;
     superagent
       .get(url)
@@ -49,108 +122,83 @@ const start = (index, next) => {
           return console.error(err);
         }
         try {
-          const $ = cheerio.load(res.text);
-          const result = {};
           // 获取价格，商品名
-          const buyArea = $('#buyArea');
-          const $buyArea = $(buyArea);
-          const priceWrap = $buyArea.children('#priceWrap');
-          const fnWrap = $buyArea.children('.fn_wrap');
-          const price = priceWrap
-            .children('#priceBlock')
-            .children('#priceSale')
-            .text()
-            .trim();
-          const favWrap = fnWrap.children('#favWrap');
-          const itemName = favWrap.children('#itemName');
-          const product = itemName.text().trim();
-
+          const { product, price } = this.getProduct(res);
           // 获取供应商信息
-          const reg2 = /<script>window\._itemInfo=\((\S*)\);<\/script><script>window\._itemSpecSkus=/;
-          const reg3 = /"vender":"(\S*)","linkphone"/;
-          const r1 = _.trim(res.text.replace(/\n/g, '').replace(/\s/g, ''));
-          const r2 = r1.match(reg2);
-          const r3 = r2 && r2[1];
-          if (r3) {
-            const vender = r3.match(reg3) && r3.match(reg3)[1];
-            result.isSelf = r3.indexOf('self_D') > -1;
-            result.vender = vender;
+          const { vender, isSelf } = this.getVender(res);
+          // 获取图片链接
+          const images = this.getImageUrls(res, sku);
+          // 结果
+          const result = {
+            price,
+            product,
+            sku,
+            vender,
+            isSelf,
+            images,
+            origin: `https://item.jd.com/${sku}.html`,
+            fetchUrl: url,
+            date: new Date(),
+          };
+          // 是否下载图片
+          const isDownloadImg = this.getTypeByArgv('-d')
+          if (isDownloadImg && images.length) {
+            this.dowloadImage(images, sku)
           }
-          // price也可从obj中取
-          result.price = price;
-          result.product = product;
-          result.sku = sku;
-          result.origin = `https://item.jd.com/${sku}.html`;
-          result.fetchUrl = url;
-          result.date = new Date();
-          resolve(result);
+          resolve(result)
         } catch (error) {
           reject({ error, url });
         }
       });
-  };
-  const ps = jdSkus.map((sku) => {
-    return new Promise((resolve, reject) => {
-      spiderJDh5Item(sku, resolve, reject);
+  }
+
+  spider(index, next) {
+    const jdSkus = wyxSkus.slice(index * singleNums, (index + 1) * singleNums);
+    console.log(`😊 [第${index + 1}批处理条数: ${jdSkus.length}]`);
+    const ps = jdSkus.map((sku) => {
+      return new Promise((resolve, reject) => {
+        this.spiderItem(sku, resolve, reject);
+      });
     });
-  });
 
-  return Promise.all(ps)
-    .then((values) => {
-      console.log(`✅ [第${index + 1}批次处理完成]`);
-      next(values);
-    })
-    .catch((e) => {
-      console.log(`❌ [第${index + 1}批次处理失败]`);
-      next([]);
-    });
-};
+    return Promise.all(ps)
+      .then((values) => {
+        console.log(`✅ [第${index + 1}批爬虫完成]`);
+        next(values);
+      })
+      .catch((e) => {
+        console.log(`❌ [第${index + 1}批爬虫失败]`);
+        next([]);
+      });
+  }
 
-const reduceTwoDimension = (arr) => {
-  return Array.prototype.concat.apply([], arr);
-};
+  asyncQueue() {
+    return new Queue();
+  }
 
-// 组装爬虫信息
-const wyxSheetDataWithPrice = (values) => {
-  const result = [];
-  const spiderResults = reduceTwoDimension(values);
-  wyxSheetData.forEach((sheetItem, index) => {
-    if (index > 0) {
-      const url = sheetItem[6];
-      let sheetSku = '';
-      if (url) {
-        const reg = /\d+/;
-        sheetSku = url.match(reg) ? url.match(reg)[0] : '';
-      }
-      const target = spiderResults.find((item) => item.sku === sheetSku) || {};
-      if (target.sku) {
-        sheetItem[8] = target.price;
-        // sheetItem[10] = target.isSelf ? '京东自营' : '';
-        // sheetItem[11] = target.vender;
-      }
-    }
-    result.push(sheetItem);
-  });
+  asyncFn(i) {
+    return (next) => this.spider(i, next);
+  }
 
-  return result;
-};
+  addQueue() {
+    const fns = [...Array(groupNums)].map((item, index) => this.asyncFn(index));
+    this.asyncQueue()
+      .add(...fns)
+      .run()
+      .then((values) => {
+        // 所有批次爬虫的最终结果
+        this.clearTimer();
+      })
+      .catch((e) => {
+        this.clearTimer();
+        console.log(e);
+      });
+  }
 
-// 添加队列操作
-const asyncQueue = new queue();
-const asyncFn = (i) => {
-  return (next) => {
-    start(i, next);
-  };
-};
-const fns = [...Array(groupNums)].map((item, index) => asyncFn(index));
-asyncQueue
-  .add(...fns)
-  .run()
-  .then((values) => {
-    clearTimer();
-    const result = wyxSheetDataWithPrice(values);
-    exportExcel(result);
-  })
-  .catch((e) => {
-    clearTimer();
-  });
+  start() {
+    this.addQueue();
+  }
+}
+
+const jsSpider = new JDSpider();
+jsSpider.start();
