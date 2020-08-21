@@ -15,7 +15,7 @@ class ParseExcel {
     const sheetData = [];
     firstSheetData.forEach((item, index) => {
       if (index > 0) {
-        const url = item[6] || '';
+        const url = item[0] || '';
         const reg = /\d+/;
         const sku = url.match(reg) ? url.match(reg)[0] : 'sku错误';
         skus.push(sku);

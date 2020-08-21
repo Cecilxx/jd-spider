@@ -5,14 +5,15 @@ const ParseExcel = require('./parseExcel');
 const Download = require('./download');
 const Queue = require('../utils/queue');
 const ExportExcel = require('./exportExcel');
+const path = require('path');
 const argv = process.argv;
 
 console.log('😊 [程序启动]');
 console.log('🚗 [运行中]');
 
-const { skus: allSkus } = ParseExcel.parseExcel('../resource/wyx.xlsx');
-const wyxSkus = allSkus.slice(0, 1);
-const singleNums = 50;
+const { skus: allSkus, sheetData } = ParseExcel.parseExcel('../resource/wyx.xlsx');
+const wyxSkus = allSkus.slice(0);
+const singleNums = 5;
 const groupNums = Math.ceil(wyxSkus.length / singleNums);
 
 class JDSpider {
@@ -36,14 +37,32 @@ class JDSpider {
     return argv.includes(type);
   }
 
+  handleDownloadImge({ images, detailImages, sku  }) {
+    const isDownloadImg = this.getTypeByArgv('-img');
+    const isDownloadDetailImg = this.getTypeByArgv('-detail');
+    const dowloadImgPromise = [
+      // 下载主图
+      isDownloadImg && images.length && this.dowloadImage(images, sku, 'img'),
+      // 下载详图
+      isDownloadDetailImg && detailImages.length && this.dowloadImage(detailImages, sku, 'detail')
+    ]
+    Promise.all(dowloadImgPromise).then(() => {
+      console.log('sku: %s 全部下载完成', sku);
+      // Download.zip(sku)
+    })
+    // Download.zip('6810863')
+  }
+
   dowloadImage(images, sku, type) {
-    Download.dowloadImg(images, sku, type).then(() => {
+    return Download.dowloadImg(images, sku, type).then(() => {
       if (type === 'img') {
-        console.log('sku: %s 主图全部下载完毕', sku);
+        console.log('sku: %s 主图下载完毕', sku);
       }
       if (type === 'detail') {
-        console.log('sku:%s 详图全部下载完毕', sku);
+        console.log('sku:%s 详图下载完毕', sku);
       }
+    }).catch(err => {
+      console.log(err)
     });
   }
 
@@ -66,14 +85,24 @@ class JDSpider {
           }
           const reg = /background-image:url\((\S*)\);/g;
           const reg2 = /background-image:url\((\S*)\);/;
-          const bgImages = res.text.match(reg) || [];
-          const detailImages = [];
-          bgImages.forEach((bg) => {
-            const bgUrl = bg.match(reg2) ? `https:${bg.match(reg2)[1]}` : '';
-            if (bgUrl) {
-              detailImages.push(bgUrl);
-            }
-          });
+          const reg3 = /src=\\"(\S*)\\">/g
+          const reg4 = /src=\\"(\S*)\\">/
+          const reg5 = /^http[s]?:/
+          const bgImages = res.text.match(reg);
+          const srcImages = res.text.match(reg3);
+          const detailImages = []
+          function getResultImages (images, reg) {
+            images.map((bg) => {
+              let url = bg.match(reg) ? bg.match(reg)[1] : '';
+              if (url) {
+                if (!reg5.test(url)) {
+                  url = `https:${url}`
+                }
+                detailImages.push(url);
+              }
+            });
+          }
+          getResultImages(bgImages || srcImages || [], bgImages ? reg2 : reg4)
           resolve(detailImages);
         });
     });
@@ -182,16 +211,7 @@ class JDSpider {
             date: new Date(),
           };
           resolve(result);
-          // 下载主图
-          const isDownloadImg = this.getTypeByArgv('-img');
-          if (isDownloadImg && images.length) {
-            this.dowloadImage(images, sku, 'img');
-          }
-          // 下载详情图
-          const isDownloadDetailImg = this.getTypeByArgv('-detail');
-          if (isDownloadDetailImg && detailImages.length) {
-            this.dowloadImage(detailImages, sku, 'detail');
-          }
+          this.handleDownloadImge({ images, detailImages, sku });
         } catch (error) {
           reject({ error, url });
         }
@@ -214,6 +234,7 @@ class JDSpider {
       })
       .catch((e) => {
         console.log(`❌ [第${index + 1}批爬虫失败]`);
+        console.log(e)
         next([]);
       });
   }
@@ -234,6 +255,7 @@ class JDSpider {
       .then((values) => {
         // 所有批次爬虫的最终结果
         this.clearTimer();
+        ExportExcel.wyxSheetDataWithPrice(values, sheetData)
       })
       .catch((e) => {
         this.clearTimer();
