@@ -3,9 +3,20 @@ const request = require('request');
 const path = require('path');
 const compressing = require('compressing');
 
+//递归创建目录 同步方法
+function mkdirsSync(dirname) {
+  if (!fs.existsSync(dirname)) {
+    if (mkdirsSync(path.dirname(dirname))) {
+      fs.mkdirSync(dirname);
+      return true;
+    }
+  }
+  return true;
+}
+
 class Download {
-  static getPath(sku) {
-    return path.join(__dirname, `../export/${sku}`);
+  static getPath(sku, type) {
+    return path.join(__dirname, `../export/${type}/${sku}`);
   }
 
   static getImgSuffix(url) {
@@ -19,7 +30,7 @@ class Download {
     imgUrls.forEach((url) => {
       const suffix = Download.getImgSuffix(url);
       const stream = fs.createWriteStream(
-        `${dirPath}/${type}_${sku}_${id++}${suffix}`
+        `${dirPath}/${sku}_${id++}${suffix}`
       );
       const item = new Promise((resolve, reject) => {
         request(url)
@@ -38,30 +49,32 @@ class Download {
   }
 
   static dowloadImg(imgUrls, sku, type) {
-    const dirPath = Download.getPath(sku);
+    const dirPath = Download.getPath(sku, type);
     return new Promise((resolve, reject) => {
       if (!fs.existsSync(dirPath)) {
-        fs.mkdirSync(dirPath);
+        mkdirsSync(dirPath);
+        Download.requestImg({ dirPath, imgUrls, type, sku })
+          .then(() => resolve())
+          .catch((e) => reject(e));
+      } else {
+        resolve('已经存在')
       }
-      Download.requestImg({ dirPath, imgUrls, type, sku })
-        .then(() => resolve())
-        .catch((e) => reject(e));
     });
   }
 
   static zip(sku) {
     const dirPath = Download.getPath(sku);
-    console.log(dirPath)
-    console.log(__dirname)
+    console.log(dirPath);
+    console.log(__dirname);
     // compress a file
     compressing.gzip
       .compressFile(dirPath, path.join(__dirname, `../export/${sku}.gz`))
       .then(() => {
-        console.log('压缩成功')
+        console.log('压缩成功');
       })
       .catch((e) => {
-        console.log('压缩失败')
-        console.log(e)
+        console.log('压缩失败');
+        console.log(e);
       });
   }
 }
