@@ -11,12 +11,11 @@ class ExportExcel {
     const spiderResults = reduceTwoDimension(values);
     sheetData.forEach((sheetItem, index) => {
       if (index > 0) {
-        const url = sheetItem[0];
+        const url = sheetItem[0] || '';
         let sheetSku = '';
-        if (url) {
-          const reg = /\d+/;
-          sheetSku = url.match(reg) ? url.match(reg)[0] : '';
-        }
+        const reg = /\d+/;
+        sheetSku = url.match(reg) ? url.match(reg)[0] : '';
+
         const target =
           spiderResults.find((item) => item.sku === sheetSku) || {};
         if (target.sku) {
@@ -29,16 +28,16 @@ class ExportExcel {
           // sheetItem[11] = target.vender;
         }
       } else {
-        sheetItem[0] = '商品名称'
-        sheetItem[1] = '商品价格'
-        sheetItem[2] = '店铺名称'
-        sheetItem[3] = '是否自营'
-        sheetItem[4] = '链接'
+        sheetItem[0] = '商品名称';
+        sheetItem[1] = '商品价格';
+        sheetItem[2] = '店铺名称';
+        sheetItem[3] = '是否自营';
+        sheetItem[4] = '链接';
       }
       result.push(sheetItem);
     });
 
-    ExportExcel.exportExcel(result)
+    ExportExcel.exportExcel(result);
   }
 
   static exportExcel(data) {
@@ -55,4 +54,4 @@ class ExportExcel {
   }
 }
 
-module.exports = ExportExcel
+module.exports = ExportExcel;

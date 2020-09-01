@@ -17,12 +17,12 @@ class ParseExcel {
       if (index > 0) {
         const url = item[0] || '';
         const reg = /\d+/;
-        const sku = url.match(reg) ? url.match(reg)[0] : 'sku错误';
-        skus.push(sku);
-        sheetData.push(item);
-      } else {
-        sheetData.push(item);
+        const sku = url.match(reg) ? url.match(reg)[0] : '';
+        if (sku) {
+          skus.push(sku);
+        }
       }
+      sheetData.push(item);
     });
     console.log('✅ [获取sku数据成功]');
     console.log(`✅ [处理数据为: ${skus.length}条]`);
