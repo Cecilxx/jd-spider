@@ -11,7 +11,7 @@ class ExportExcel {
     const result = [];
     const spiderResults = reduceTwoDimension(values);
     sheetData.forEach((sheetItem, index) => {
-      if (index > Config.startLine) {
+      if (index >= Config.startLine) {
         const url = sheetItem[Config.urlIndex] || '';
         let sheetSku = '';
         const reg = /\d+/;

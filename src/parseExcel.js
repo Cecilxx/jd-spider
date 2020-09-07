@@ -16,7 +16,7 @@ class ParseExcel {
     const skus = [];
     const sheetData = [];
     firstSheetData.forEach((item, index) => {
-      if (index > Config.startLine) {
+      if (index >= Config.startLine) {
         const url = item[Config.urlIndex] || '';
         const reg = /\d+/;
         const sku = url.match(reg) ? url.match(reg)[0] : '';
