@@ -26,11 +26,11 @@ class Download {
 
   static requestImg({ dirPath, imgUrls, type, sku }) {
     const dowloadPromise = [];
-    let id = 0;
+    let id = 1;
     imgUrls.forEach((url) => {
       const suffix = Download.getImgSuffix(url);
       const stream = fs.createWriteStream(
-        `${dirPath}/${sku}_${id++}${suffix}`
+        `${dirPath}/${id++}${suffix}`
       );
       const item = new Promise((resolve, reject) => {
         request(url)

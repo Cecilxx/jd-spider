@@ -5,16 +5,15 @@ const ParseExcel = require('./parseExcel');
 const Download = require('./download');
 const Queue = require('../utils/queue');
 const ExportExcel = require('./exportExcel');
-const path = require('path');
+const Config = require('../config');
 const argv = process.argv;
 
 console.log('😊 [程序启动]');
 console.log('🚗 [运行中]');
 
-const { skus: allSkus, sheetData } = ParseExcel.parseExcel('../resource/wyx.xlsx');
+const { skus: allSkus, sheetData } = ParseExcel.parseExcel(`../resource/${Config.resource}`);
 const wyxSkus = allSkus.slice(0);
-const singleNums = 5;
-const groupNums = Math.ceil(wyxSkus.length / singleNums);
+const groupNums = Math.ceil(wyxSkus.length / Config.singleNums);
 
 class JDSpider {
   constructor() {
@@ -38,8 +37,8 @@ class JDSpider {
   }
 
   handleDownloadImge({ images, detailImages, sku  }) {
-    const isDownloadImg = this.getTypeByArgv('-img');
-    const isDownloadDetailImg = this.getTypeByArgv('-detail');
+    const isDownloadImg = Config.downloadMainImg || this.getTypeByArgv('-img');
+    const isDownloadDetailImg = Config.downloadDetailImg || this.getTypeByArgv('-detail');
     const ps = []
     if (isDownloadImg) {
       if (images.length) {
@@ -193,7 +192,7 @@ class JDSpider {
       .get(url)
       .set(
         'cookie',
-        'shshshfpa=0e337f07-f1f9-f663-9993-765cc7a34b1b-1572677090; shshshfpb=mm494o84QVKs85O4pmEhLSg%3D%3D; __jdu=1381573350; areaId=2; PCSYCityID=CN_310000_310100_310113; user-key=7fb3a49a-c58e-4daf-9a2e-c427546b3805; cn=0; unpl=V2_ZzNtbRAHShBwXxNdcktdB2JWEl1LUhAVJlgVXSkaWVUwVBpdclRCFnQUR1FnGFQUZwUZWEtcQRdFCEdkeB5fA2AFEFlBZxVLK14bADlNDEY1WnwHBAJfF3ILQFJ8HlQMZAEUbXJUQyV1CXZUeRBcAWEBEFlDZ3MSRTh2UX8YXQdnMxNtQ2cBQSkOQVV%2bHVVIZwEbXUZRQRdxCXZVSxo%3d; __jdv=76161171|google-search|t_262767352_googlesearch|cpc|kwd-362776698237_0_ca844fd88c034d1184b1bab8c24aff91|1586425806501; ipLoc-djd=2-2824-51920-0; mt_xid=V2_52007VwMQW11cVFgdTRhsUGQGRwBdWwFGT0waVRliBUBQQQsBXUtVSQ4HYwMRVgleVA8ceRpdBmYfE1dBWFNLH0wSWAFsBxViX2hSah9KEV8MZAYTW21YUVkd; __jdc=122270672; 3AB9D23F7A4B3C9B=M2KAWC56K5UJWMFPTTCBAWHJOWUUMZJT3A7KVMJNJQYZKK3JTY6I6G3GRFOF3VOQ6QHQWRTNEVRK52MRKJDZQJGPUI; wxa_level=1; retina=1; webp=1; bsid=92d956ac14c35d959ef1ac22ab00db31; pdtk=GTyDuGQ4bVOQZu2S2Vlrem1qjJUyDAaEumyUYdjFlX%2FNBLmp2LH56l3Aq9gCsP%2Fd; warehistory="100002951018,67070210232,4214138,100002069201,3721579,100012075540,100012058000,1574547754,40906835858,2525384,62861334695,100002115391,100008743188,100002115389,"; wq_logid=1586514916.1435049094; cid=9; wqmnx1=MDEyNjM5OGkudTJ0R1ZseVlONlBNLnRlIDZlLkxlbzNTN0ZkLTJVKSY%3D; __jda=122270672.1381573350.1572579804.1586507511.1586514916.27; __jdb=122270672.1.1381573350|27.1586514916; mba_muid=1381573350; mba_sid=15865149166636965101014317405.1; __wga=1586514917854.1586514917854.1586514917854.1586514917854.1.1; sc_width=1440; autoOpenApp_downCloseDate_auto=1586514918280_21600000; __jd_ref_cls=MDownLoadFloat_AppArouseA1; shshshfp=b059c65bbc86f0b32e85f8210d15d7aa; shshshsID=1c3f5c8dbb4780d8128a5c519d5b7f68_1_1586514918715; visitkey=11945490660773122; PPRD_P=UUID.1381573350-LOGID.1586514917926.217591426; sk_history=100002951018%2C'
+        '__jdu=1596510614520635911081; shshshfpa=77f3908d-39fc-e6e0-35a2-bcf7a2d588b9-1596510616; shshshfpb=q4IsJ8r3Xj6pbXYhgDaX0mw%3D%3D; unpl=V2_ZzNtbRBeExB1WEYGL01YAWJWRQpLBRFHcl9HAX1MXwIyChEOclRCFnQUR11nGlwUZwUZX0dcRxZFCEdkeB5fA2AFEFlBZxVLK14bADlNDEY1WnwHBAJfF3ILQFJ8HlQMZAEUbXJUQyV1CXZUfxFbAWcCFV1HU0AUcgpCXHsZXQxnMyJacmdzE3MPT11zKV01ZjNQCR5SQR18CU4Zex1UAmMDE1pCUkcWdA9EUHMZXARuAyJcclQ%3d; __jdc=122270672; 3AB9D23F7A4B3C9B=GPVNB3CDKO5PZLWH5CVIR4TBKTLJ555HNOJXJCMY52YZB7JD34LGU5WS54VHQAXL6JRFXLBSBJZQ2QHOY3Y7ZDN5ZE; _gcl_au=1.1.1865166526.1598068614; retina=1; webp=1; mba_muid=1596510614520635911081; sc_width=400; visitkey=32326812746956742; areaId=2; ipLoc-djd=2-2825-0-0; __jda=122270672.1596510614520635911081.1596510614.1598941959.1599478227.10; __jdv=122270672|direct|-|none|-|1599478226755; wxa_level=1; jxsid=15994782345123137472; autoOpenApp_downCloseDate_auto=1599478235366_21600000; bsid=a84adac373ccca2e3a959ba7d1e31e17; pdtk=kuvNOzQUx5e7mAD5YClk0Y8hzCdjb8XywMJynjCnSKAvBLcaX20K0tGT4H6TSyeB; warehistory="4293429,4940819,8767889,8555456,69821412930,69821412929,8555466,65612276947,100003044118,100004966597,"; cid=9; jxsid_s_u=https%3A//item.m.jd.com/product/4293429.html; shshshfp=9cc25f1939ac082891978074887fb087; sk_history=4293429%2C4940819%2C8767889%2C8555456%2C69821412930%2C69821412929%2C8555466%2C; wq_logid=1599479824.1574647295; wqmnx1=MDEyNjM4MXR0LmQzbHU1Q0NNSzJIMTg2bChBNnVsTlczSGspLzhiYTNyZDI0T0lISA%3D%3D; __jdb=122270672.8.1596510614520635911081|10.1599478227; mba_sid=15994782340082565224501943519.6; __jd_ref_cls=MDownLoadFloat_FloatShield; __wga=1599479824847.1599478234457.1598068621754.1598068621754.6.2; PPRD_P=UUID.1596510614520635911081-LOGID.1599479824855.1944404809; jxsid_s_t=1599479824900; shshshsID=f6dda835910426a93d8b90f26ebb3858_8_1599479825186'
       )
       .set(
         'user-agent',
@@ -238,7 +237,7 @@ class JDSpider {
   }
 
   spider(index, next) {
-    const jdSkus = wyxSkus.slice(index * singleNums, (index + 1) * singleNums);
+    const jdSkus = wyxSkus.slice(index * Config.singleNums, (index + 1) * Config.singleNums);
     const ps = jdSkus.map((sku) => {
       return new Promise((resolve, reject) => {
         this.spiderItem(sku, resolve, reject);
@@ -274,9 +273,11 @@ class JDSpider {
       .add(...fns)
       .run()
       .then((values) => {
-        // 所有批次爬虫的最终结果
         this.clearTimer();
-        // ExportExcel.wyxSheetDataWithPrice(values, sheetData)
+        const isExportExcel = Config.exportExcel || this.getTypeByArgv('-excel');
+        if (isExportExcel) {
+          ExportExcel.wyxSheetDataWithPrice(values, sheetData)
+        }
       })
       .catch((e) => {
         this.clearTimer();
