@@ -3,6 +3,8 @@ module.exports = {
   urlIndex: 0,
   // 从第几行开始
   startLine: 1,
+  // 导出项放从第几列开始
+  exportIndex: 1,
   // 是否下载轮播图
   downloadMainImg: false,
   // 是否下载详情图

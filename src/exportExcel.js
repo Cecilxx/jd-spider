@@ -1,6 +1,6 @@
 const xlsx = require('node-xlsx');
 const fs = require('fs');
-const Config = require('../config')
+const Config = require('../config');
 
 const reduceTwoDimension = (arr) => {
   return Array.prototype.concat.apply([], arr);
@@ -20,10 +20,12 @@ class ExportExcel {
         const target =
           spiderResults.find((item) => item.sku === sheetSku) || {};
         if (target.sku) {
-          sheetItem[2] = target.product;
-          sheetItem[3] = target.price;
-          sheetItem[4] = target.vender;
-          sheetItem[5] = target.isSelf ? '京东自营' : '第三方';
+          sheetItem[Config.exportIndex] = target.product;
+          sheetItem[Config.exportIndex + 1] = target.price;
+          sheetItem[Config.exportIndex + 2] = target.vender;
+          sheetItem[Config.exportIndex + 3] = target.isSelf
+            ? '京东自营'
+            : '第三方';
           // sheetItem[6] = url;
         }
       }
