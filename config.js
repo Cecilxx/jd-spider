@@ -1,10 +1,10 @@
 module.exports = {
-  // url所在的位置，0为第一列
-  urlIndex: 0,
-  // 从第几行开始
-  startLine: 1,
-  // 导出项放从第几列开始
-  exportIndex: 1,
+  // url所在的位置，1为第一列
+  urlIndex: 1,
+  // 从第几行开始, 1为第一行
+  startLine: 2,
+  // 导出项放从第几列开始, 1为第一行
+  exportIndex: 2,
   // 是否下载轮播图
   downloadMainImg: false,
   // 是否下载详情图

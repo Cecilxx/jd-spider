@@ -1,7 +1,6 @@
 const path = require('path');
 const xlsx = require('node-xlsx');
 const Config = require('../config');
-const { startLine } = require('../config');
 
 class ParseExcel {
   static parseExcel(resource) {
@@ -16,8 +15,8 @@ class ParseExcel {
     const skus = [];
     const sheetData = [];
     firstSheetData.forEach((item, index) => {
-      if (index >= Config.startLine) {
-        const url = item[Config.urlIndex] || '';
+      if (index >= Config.startLine - 1) {
+        const url = item[Config.urlIndex - 1] || '';
         const reg = /\d+/;
         const sku = url.match(reg) ? url.match(reg)[0] : '';
         if (sku) {
