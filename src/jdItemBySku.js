@@ -100,12 +100,13 @@ class JDSpider {
           }
           const reg = /background-image:url\((\S*)\)[;]?/g;
           const reg2 = /background-image:url\((\S*)\)[;]?/;
-          const reg3 = /src=\\"(\S*)\\">/g
-          const reg4 = /src=\\"(\S*)\\">/
+          const reg3 = /src=\\"(\S*)\\"\s*\/?>/g
+          const reg4 = /src=\\"(\S*)\\"\s*\/?>/
           const reg5 = /^http[s]?:/
           const bgImages = res.text.match(reg);
           const srcImages = res.text.match(reg3);
           const detailImages = [];
+
           function getResultImages (images, reg) {
             images.map((bg) => {
               let url = bg.match(reg) ? bg.match(reg)[1] : '';
