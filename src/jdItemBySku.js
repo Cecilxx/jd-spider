@@ -11,8 +11,11 @@ const argv = process.argv;
 console.log('😊 [程序启动]');
 console.log('🚗 [运行中]');
 
-const { skus: allSkus, sheetData } = ParseExcel.parseExcel(`../resource/${Config.resource}`);
+const { skus: allSkus, sheetData, stbSkus: allStbSkus } = ParseExcel.parseExcel(
+  `../resource/${Config.resource}`
+);
 const wyxSkus = allSkus.slice(0);
+const stbSkus = allStbSkus.slice(0);
 const groupNums = Math.ceil(wyxSkus.length / Config.singleNums);
 
 class JDSpider {
@@ -36,53 +39,60 @@ class JDSpider {
     return argv.includes(type);
   }
 
-  handleDownloadImge({ images, detailImages, sku  }) {
+  handleDownloadImge({ images, detailImages, sku, stbSku }) {
     const isDownloadImg = Config.downloadMainImg || this.getTypeByArgv('-img');
-    const isDownloadDetailImg = Config.downloadDetailImg || this.getTypeByArgv('-detail');
-    const ps = []
+    const isDownloadDetailImg =
+      Config.downloadDetailImg || this.getTypeByArgv('-detail');
+    const ps = [];
     if (isDownloadImg) {
       if (images.length) {
-        ps.push(this.dowloadImage(images, sku, '主图'))
+        ps.push(this.dowloadImage(images, sku, stbSku, '主图'));
       } else {
-        ps.push(Promise.reject(`sku: ${sku} 主图链接获取失败`))
+        ps.push(Promise.reject(`sku: ${sku} 主图链接获取失败`));
       }
     } else {
-      ps.push(Promise.reject(`sku: ${sku} 无需下载主图`))
+      ps.push(Promise.reject(`sku: ${sku} 无需下载主图`));
     }
     if (isDownloadDetailImg) {
       if (detailImages.length) {
-        ps.push(this.dowloadImage(detailImages, sku, '详图'))
+        ps.push(this.dowloadImage(detailImages, sku, stbSku, '详图'));
       } else {
-        ps.push(Promise.reject(`sku: ${sku} 详图链接获取失败`))
+        ps.push(Promise.reject(`sku: ${sku} 详图链接获取失败`));
       }
     } else {
-      ps.push(Promise.reject(`sku: ${sku} 无需下载详图`))
+      ps.push(Promise.reject(`sku: ${sku} 无需下载详图`));
     }
 
-    Promise.all(ps).then(() => {
-      console.log('sku: %s 全部下载完成', sku);
-      // Download.zip(sku)
-    }).catch((e) => {
-      console.log(`[error] ${e}`)
-    })
+    Promise.all(ps)
+      .then(() => {
+        console.log('sku: %s 全部下载完成', sku);
+        // Download.zip(sku)
+      })
+      .catch((e) => {
+        console.log(`[error] ${e}`);
+      });
     // Download.zip('6810863')
   }
 
-  dowloadImage(images, sku, type) {
-    return Download.dowloadImg(images, sku, type).then(() => {
-      if (type === '主图') {
-        console.log('sku: %s 主图下载完毕', sku);
-      }
-      if (type === '详图') {
-        console.log('sku:%s 详图下载完毕', sku);
-      }
-    }).catch(err => {
-      console.log(err)
-    });
+  dowloadImage(images, sku, stbSku, type) {
+    return Download.dowloadImg(images, sku, stbSku, type)
+      .then(() => {
+        if (type === '主图') {
+          console.log('sku: %s 主图下载完毕', sku);
+        }
+        if (type === '详图') {
+          console.log('sku:%s 详图下载完毕', sku);
+        }
+      })
+      .catch((err) => {
+        console.log(err);
+      });
   }
 
   getDetailImages(sku, urlType = 'pc') {
-    const pcDetailUrl = `https://wqsitem.jd.com/detail/${urlType === 'pc' ? '0' : `${sku}`}_d${sku}_normal.html`;
+    const pcDetailUrl = `https://wqsitem.jd.com/detail/${
+      urlType === 'pc' ? '0' : `${sku}`
+    }_d${sku}_normal.html`;
     return new Promise((resolve, reject) => {
       superagent
         .get(pcDetailUrl)
@@ -100,19 +110,19 @@ class JDSpider {
           }
           const reg = /background-image:url\((\S*)\)[;]?/g;
           const reg2 = /background-image:url\((\S*)\)[;]?/;
-          const reg3 = /src=\\"(\S*)\\"\s*\/?>/g
-          const reg4 = /src=\\"(\S*)\\"\s*\/?>/
-          const reg5 = /^http[s]?:/
+          const reg3 = /src=\\"(\S*)\\"\s*\/?>/g;
+          const reg4 = /src=\\"(\S*)\\"\s*\/?>/;
+          const reg5 = /^http[s]?:/;
           const bgImages = res.text.match(reg);
           const srcImages = res.text.match(reg3);
           const detailImages = [];
 
-          function getResultImages (images, reg) {
+          function getResultImages(images, reg) {
             images.map((bg) => {
               let url = bg.match(reg) ? bg.match(reg)[1] : '';
               if (url) {
                 if (!reg5.test(url)) {
-                  url = `https:${url}`
+                  url = `https:${url}`;
                 }
                 detailImages.push(url);
               }
@@ -187,7 +197,7 @@ class JDSpider {
     };
   }
 
-  spiderItem(sku, resolve, reject) {
+  spiderItem(sku, stbSku, resolve, reject) {
     const url = `https://item.m.jd.com/product/${sku}.html`;
     superagent
       .get(url)
@@ -214,7 +224,7 @@ class JDSpider {
           // 获取详情图链接
           let detailImages = await this.getDetailImages(sku);
           if (!detailImages.length) {
-            detailImages = await this.getDetailImages(sku, 'h5')
+            detailImages = await this.getDetailImages(sku, 'h5');
           }
           // 结果
           const result = {
@@ -230,7 +240,7 @@ class JDSpider {
             date: new Date(),
           };
           resolve(result);
-          this.handleDownloadImge({ images, detailImages, sku });
+          this.handleDownloadImge({ images, detailImages, sku, stbSku });
         } catch (error) {
           reject({ error, url });
         }
@@ -238,14 +248,21 @@ class JDSpider {
   }
 
   spider(index, next) {
-    const jdSkus = wyxSkus.slice(index * Config.singleNums, (index + 1) * Config.singleNums);
-    const ps = jdSkus.map((sku) => {
+    const jdSkus = wyxSkus.slice(
+      index * Config.singleNums,
+      (index + 1) * Config.singleNums
+    );
+    const stbs = stbSkus.slice(
+      index * Config.singleNums,
+      (index + 1) * Config.singleNums
+    );
+    const ps = jdSkus.map((sku, i) => {
       return new Promise((resolve, reject) => {
-        this.spiderItem(sku, resolve, reject);
+        this.spiderItem(sku, stbs[i], resolve, reject);
       });
     });
 
-    const process = `第${index + 1}/${groupNums}`
+    const process = `第${index + 1}/${groupNums}`;
     console.log(`😊 [${process}批处理条数: ${jdSkus.length}]`);
 
     return Promise.all(ps)
@@ -255,7 +272,7 @@ class JDSpider {
       })
       .catch((e) => {
         console.log(`❌ [${process}批爬虫失败]`);
-        console.log(e)
+        console.log(e);
         next([]);
       });
   }
@@ -275,9 +292,10 @@ class JDSpider {
       .run()
       .then((values) => {
         this.clearTimer();
-        const isExportExcel = Config.exportExcel || this.getTypeByArgv('-excel');
+        const isExportExcel =
+          Config.exportExcel || this.getTypeByArgv('-excel');
         if (isExportExcel) {
-          ExportExcel.wyxSheetDataWithPrice(values, sheetData)
+          ExportExcel.wyxSheetDataWithPrice(values, sheetData);
         }
       })
       .catch((e) => {

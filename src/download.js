@@ -2,6 +2,7 @@ const fs = require('fs');
 const request = require('request');
 const path = require('path');
 const compressing = require('compressing');
+const Config = require('../config');
 
 //递归创建目录 同步方法
 function mkdirsSync(dirname) {
@@ -15,8 +16,11 @@ function mkdirsSync(dirname) {
 }
 
 class Download {
-  static getPath(sku, type) {
-    return path.join(__dirname, `../export/${type}/${sku}`);
+  static getPath(sku, stbSku, type) {
+    return path.join(
+      __dirname,
+      `../export/${type}/${Config.imageDirType === 'stbSku' ? stbSku : sku}`
+    );
   }
 
   static getImgSuffix(url) {
@@ -29,9 +33,7 @@ class Download {
     let id = 1;
     imgUrls.forEach((url) => {
       const suffix = Download.getImgSuffix(url);
-      const stream = fs.createWriteStream(
-        `${dirPath}/${id++}${suffix}`
-      );
+      const stream = fs.createWriteStream(`${dirPath}/${id++}${suffix}`);
       const item = new Promise((resolve, reject) => {
         request(url)
           .pipe(stream)
@@ -48,8 +50,8 @@ class Download {
     return Promise.all(dowloadPromise);
   }
 
-  static dowloadImg(imgUrls, sku, type) {
-    const dirPath = Download.getPath(sku, type);
+  static dowloadImg(imgUrls, sku, stbSku, type) {
+    const dirPath = Download.getPath(sku, stbSku, type);
     return new Promise((resolve, reject) => {
       if (!fs.existsSync(dirPath)) {
         mkdirsSync(dirPath);
@@ -57,7 +59,7 @@ class Download {
           .then(() => resolve())
           .catch((e) => reject(e));
       } else {
-        resolve('已经存在')
+        resolve('已经存在');
       }
     });
   }
