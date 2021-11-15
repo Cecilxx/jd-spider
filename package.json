@@ -26,8 +26,10 @@
     "express": "^4.17.1",
     "iconv-lite": "^0.5.1",
     "lodash": ">=4.17.19",
+    "node-fetch": "^2.6.6",
     "node-xlsx": "^0.15.0",
     "request": "^2.88.2",
+    "simple-node-logger": "^21.8.12",
     "superagent": "^5.2.2",
     "superagent-charset": "^1.2.0"
   }
